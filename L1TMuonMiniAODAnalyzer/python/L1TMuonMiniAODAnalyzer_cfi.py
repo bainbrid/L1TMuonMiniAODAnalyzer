@@ -14,7 +14,7 @@ L1TMuonMiniAODAnalyzer = cms.EDAnalyzer('L1TMuonMiniAODAnalyzer',
     MuonPtCut=cms.double(0),
     IsMC=cms.bool(False),
     SaveTree=cms.bool(True),
-    Debug=cms.bool(False)
+    Debug=cms.bool(False),
 
     # muon track extrapolation to 1st station
     muProp1st = cms.PSet(

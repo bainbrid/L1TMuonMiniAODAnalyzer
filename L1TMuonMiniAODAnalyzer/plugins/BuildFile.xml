@@ -11,4 +11,5 @@
 <use name="TrackingTools/TransientTrack"/>
 <use name="MuonAnalysis/MuonAssociators"/>
 <use name="CondFormats/AlignmentRecord"/>
+<use name="CommonTools/UtilAlgos"/>
 <flags EDM_PLUGIN="1"/>

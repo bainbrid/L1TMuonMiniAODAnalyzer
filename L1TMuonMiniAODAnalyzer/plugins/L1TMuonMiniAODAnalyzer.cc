@@ -16,7 +16,7 @@
 //
 //
 
-#include "L1TMuonMiniAODAnalyzer/L1TMuonMiniAODAnalyzer/plugin/L1TMuonMiniAODAnalyzer.h"
+#include "L1TMuonMiniAODAnalyzer.h"
 
 
 //
@@ -45,12 +45,14 @@ L1TMuonMiniAODAnalyzer::L1TMuonMiniAODAnalyzer(const edm::ParameterSet& iConfig)
 
 {
   //now do what ever initialization is needed
-  usesResource("TFileService"); // shared resources
+  // usesResource("TFileService"); // shared resources
 
   edm::Service<TFileService> fs;
   outputTree = fs->make<TTree>("tree","tree");
 
 }
+
+L1TMuonMiniAODAnalyzer::~L1TMuonMiniAODAnalyzer() {}
 
 //
 // member functions
@@ -76,10 +78,10 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
   iEvent.getByToken(trgresultsToken_, trigResults);
   if( !trigResults.failedToGet() ) {
     int N_Triggers = trigResults->size();
-    const edm::TriggerNames & trigName = iEvent.triggerNames(*trigResults);
+    edm::TriggerNames const& trigName = iEvent.triggerNames(*trigResults);
     for( int i_Trig = 0; i_Trig < N_Triggers; ++i_Trig ) {
       if (trigResults.product()->accept(i_Trig)) {
-	      TString TrigPath =trigName.triggerName(i_Trig);
+	      TString TrigPath = trigName.triggerName(i_Trig);
 	      if(TrigPath.Contains("HLT_IsoMu27_v"))HLT_IsoMu27 =true;
         if(TrigPath.Contains("HLT_IsoMu24_v"))HLT_IsoMu24 =true;
         if(TrigPath.Contains("HLT_IsoTkMu24_v"))HLT_IsoTkMu24 =true;
@@ -103,10 +105,11 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
       l1mu_etaAtVtx.push_back( l1muonit->etaAtVtx() );
       l1mu_phi.push_back( l1muonit->phi() );
       l1mu_phiAtVtx.push_back( l1muonit->phiAtVtx() );
-      l1mu_tfIdx.push_back(it->tfMuonIndex());
+      l1mu_tfIdx.push_back(l1muonit->tfMuonIndex());
 
       l1mu_bx.push_back( i);
       l1mu_size++;
+
     }
   }
 
@@ -157,7 +160,7 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
     muon_eta.push_back((&*muon)->eta());
     muon_phi.push_back((&*muon)->phi());
     muon_pt.push_back((&*muon)->pt());
-    muon_ptcorr.push_back( ptmuoncorr );
+    muon_ptCorr.push_back( ptmuoncorr );
     muon_charge.push_back((&*muon)->charge());
     muon_PassTightID.push_back(  (&*muon)->passed(reco::Muon::CutBasedIdMediumPrompt )&& (&*muon)->passed(reco::Muon::PFIsoTight ) );
     muon_PassLooseID.push_back(  (&*muon)->passed(reco::Muon::CutBasedIdLoose )&& (&*muon)->passed(reco::Muon::PFIsoLoose ) );
@@ -181,7 +184,7 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
 
 
     // extrapolation of muon track coordinates
-    TrajectoryStateOnSurface stateAtMuSt1 = muPropagator1st_.extrapolate(muon);
+    TrajectoryStateOnSurface stateAtMuSt1 = muPropagator1st_.extrapolate(*muon);
     if (stateAtMuSt1.isValid()) {
         muon_etaAtSt1.push_back(stateAtMuSt1.globalPosition().eta());
         muon_phiAtSt1.push_back(stateAtMuSt1.globalPosition().phi());
@@ -190,7 +193,7 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
         muon_phiAtSt1.push_back(-999);
     }
 
-    TrajectoryStateOnSurface stateAtMuSt2 = muPropagator2nd_.extrapolate(muon);
+    TrajectoryStateOnSurface stateAtMuSt2 = muPropagator2nd_.extrapolate(*muon);
     if (stateAtMuSt2.isValid()) {
         muon_etaAtSt2.push_back(stateAtMuSt2.globalPosition().eta());
         muon_phiAtSt2.push_back(stateAtMuSt2.globalPosition().phi());
@@ -201,7 +204,9 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
 
 
 
-    hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered.push_back(PassTriggerLeg("hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered","hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered",&*muon,iEvent));
+    muon_isIsoHLTMuon.push_back(PassTriggerLeg("hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered",&*muon,iEvent));
+    muon_isHLTMuon.push_back(PassTriggerLeg("hltL3fL1sMu22Or25L1f0L2f10QL3Filtered50Q",&*muon,iEvent));
+    muon_isSingleMuMuon.push_back(PassTriggerLeg("hltL1sSingleMu22or25",&*muon,iEvent));
 
 
   }
@@ -251,6 +256,11 @@ void L1TMuonMiniAODAnalyzer::beginJob() {
   outputTree->Branch("muon_PassTightID",&muon_PassTightID);
   outputTree->Branch("muon_PassLooseID",&muon_PassLooseID);
   outputTree->Branch("muon_isSAMuon",&muon_isSAMuon);
+
+  outputTree->Branch("muon_isIsoHLTMuon",&muon_isIsoHLTMuon);
+  outputTree->Branch("muon_isHLTMuon",&muon_isHLTMuon);
+  outputTree->Branch("muon_isSingleMuMuon",&muon_isSingleMuMuon);
+
   outputTree->Branch("muon_size", &muon_size, "muon_size/I");
 
 
@@ -266,7 +276,6 @@ void L1TMuonMiniAODAnalyzer::beginJob() {
   outputTree->Branch("HLT_IsoMu24",&HLT_IsoMu24,"HLT_IsoMu24/O");
   outputTree->Branch("HLT_IsoTkMu24",&HLT_IsoTkMu24,"HLT_IsoTkMu24/O");
   outputTree->Branch("HLT_Mu50",&HLT_Mu50,"HLT_Mu50/O");
-  outputTree->Branch("hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered",&hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered);
 
   outputTree->Branch("l1mu_qual",&l1mu_qual);
   outputTree->Branch("l1mu_charge",&l1mu_charge);
@@ -284,6 +293,7 @@ void L1TMuonMiniAODAnalyzer::beginJob() {
 
 }
 
+void L1TMuonMiniAODAnalyzer::endJob() {}
 
 void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
 
@@ -294,7 +304,6 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
   _dphill = 0;
   _phill = 0;
   _costhCSll = 0;
-  _nElesll = 0 ;
 
   _n_PV = 0;
   trueNVtx = 0;
@@ -310,8 +319,6 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
   Flag_globalSuperTightHalo2016Filter = false;
   Flag_BadPFMuonFilter = false;
   Flag_BadPFMuonDzFilter = false;
-
-  hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered.clear();
 
   muon_eta.clear();
   muon_etaAtSt1.clear();
@@ -333,6 +340,11 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
   muon_PassTightID.clear();
   muon_PassLooseID.clear();
   muon_isSAMuon.clear() ;
+
+  muon_isIsoHLTMuon.clear();
+  muon_isHLTMuon.clear();
+  muon_isSingleMuMuon.clear();
+
   muon_size = 0;
 
   l1mu_qual.clear();
@@ -340,8 +352,8 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
   l1mu_pt.clear();
   l1mu_pt_dxy.clear();
   l1mu_dxy.clear();
-  l11mu_eta.clear();
-  l11mu_etaAtVtx.clear();
+  l1mu_eta.clear();
+  l1mu_etaAtVtx.clear();
   l1mu_phi.clear();
   l1mu_phiAtVtx.clear();
   l1mu_tfIdx.clear();
@@ -350,7 +362,7 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
 
 }
 
-bool L1TMuonMiniAODAnalyzer::PassTriggerLeg(std::string triggerlegstring, std::string triggerlegstringalt,  const pat::Muon *muonit, const edm::Event& iEvent ){
+bool L1TMuonMiniAODAnalyzer::PassTriggerLeg(std::string triggerlegstring, const pat::Muon *muonit, const edm::Event& iEvent ){
 
   edm::Handle<edm::TriggerResults> triggerBits;
   edm::Handle<pat::TriggerObjectStandAloneCollection> triggerObjects;
@@ -361,13 +373,29 @@ bool L1TMuonMiniAODAnalyzer::PassTriggerLeg(std::string triggerlegstring, std::s
   for (pat::TriggerObjectStandAlone obj : *triggerObjects) {
     obj.unpackNamesAndLabels(iEvent,*triggerBits);
     for (unsigned h = 0; h < obj.filterLabels().size(); ++h){
-      string myfillabl=obj.filterLabels()[h];
-      if( (myfillabl.find(triggerlegstring)!=string::npos  || myfillabl.find(triggerlegstringalt)!=string::npos)&& deltaR(muonit->eta(),muonit->phi(), obj.eta(),obj.phi())<0.4 ) return true;
-      if( (myfillabl.find(triggerlegstring)!=string::npos  || myfillabl.find(triggerlegstringalt)!=string::npos)&& myfillabl.find("hltL1s")!=string::npos &&deltaR(muonit->eta(),muonit->phi(), obj.eta(),obj.phi())<0.5 ) return true;
+      TString myfillabl=obj.filterLabels()[h];
+      if( (myfillabl.Contains(triggerlegstring)) && deltaR(muonit->eta(),muonit->phi(), obj.eta(),obj.phi())<0.4 ) return true;
+      if( (myfillabl.Contains(triggerlegstring)) && myfillabl.Contains("hltL1s") && deltaR(muonit->eta(),muonit->phi(), obj.eta(),obj.phi())<0.5 ) return true;
     }
   }
   return false;
 }
+
+bool L1TMuonMiniAODAnalyzer::GetMETFilterDecision(const edm::Event& iEvent,edm::Handle<TriggerResults> METFilterResults, TString studiedfilter){
+  
+  if( !METFilterResults.failedToGet() ) {
+    int N_MetFilters = METFilterResults->size();
+    const edm::TriggerNames & metfilterName = iEvent.triggerNames(*METFilterResults);
+    for( int i_Metfilter = 0; i_Metfilter < N_MetFilters; ++i_Metfilter ) {
+      TString MetfilterPath =metfilterName.triggerName(i_Metfilter);
+      //      cout << MetfilterPath<<endl;
+      if(MetfilterPath.Index(studiedfilter) >=0)  return METFilterResults.product()->accept(i_Metfilter);
+
+    }
+  }
+   return true; 
+}
+
 
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
