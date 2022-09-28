@@ -99,6 +99,7 @@ class L1TMuonMiniAODAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResou
 
     edm::EDGetTokenT<std::vector< pat::PackedCandidate>> pfcandsToken_;
     edm::EDGetTokenT<std::vector< pat::Muon> > muonToken_;
+    edm::EDGetTokenT<std::vector< pat::Muon> > dispMuonToken_;
     edm::EDGetTokenT<GenParticleCollection> genpartToken_;
     edm::EDGetTokenT<std::vector< pat::PackedGenParticle>> packedgenpartToken_;
     edm::EDGetTokenT<edm::TriggerResults> trgresultsToken_;
@@ -165,6 +166,40 @@ class L1TMuonMiniAODAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResou
 
     int muon_size;
 
+    // Displaced Muons
+    vector<Float_t>  dispMuon_eta;
+    vector<Float_t>  dispMuon_etaAtSt1;
+    vector<Float_t>  dispMuon_etaAtSt2;
+    vector<Float_t>  dispMuon_phi;
+    vector<Float_t>  dispMuon_phiAtSt1;
+    vector<Float_t>  dispMuon_phiAtSt2;
+    vector<Float_t>  dispMuon_pt;
+    vector<Float_t>  dispMuon_ptCorr;
+    vector <int>     dispMuon_charge;
+
+    vector<Float_t>  dispMuon_dz;
+    vector<Float_t>  dispMuon_dzError;
+    vector<Float_t>  dispMuon_dxy;
+    vector<Float_t>  dispMuon_dxyError;
+    vector<Float_t>  dispMuon_3dIP;
+    vector<Float_t>  dispMuon_3dIPError;
+
+    vector<Bool_t>  dispMuon_PassTightID;
+    vector<Bool_t>  dispMuon_PassLooseID;
+    vector<Bool_t> dispMuon_isSAMuon ;
+
+    //Trigger matching variables: is a reco object matched to a trigger filter
+    vector<Bool_t> dispMuon_isDispL2HLTDiMuon;
+    vector<Bool_t> dispMuon_isDispHLTDiMuon;
+    vector<Bool_t> dispMuon_isL2DispHLTMuon;
+    vector<Bool_t> dispMuon_isNoBPTXHLTMuon;
+    vector<Bool_t> dispMuon_isL2NoVtxHLTMuon;
+    vector<Bool_t> dispMuon_isL2CosmicSeedHLTMuon;
+    vector<Bool_t> dispMuon_isL1NoBPTXMuon;
+    vector<Bool_t> dispMuon_isL1DispMuon;
+
+    int dispMuon_size;
+
     //Event variables (reco)
     //For dilepton studies
     Float_t _mll;
@@ -180,6 +215,15 @@ class L1TMuonMiniAODAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResou
     bool HLT_IsoMu24;
     bool HLT_IsoTkMu24;
     bool HLT_Mu50;
+    bool HLT_DoubleMu43NoFiltersNoVtx;
+    bool HLT_DoubleL3Mu16_10NoVtx_DxyMin0p01cm;
+    bool HLT_DoubleL3dTksMu16_10NoVtx_DxyMin0p01cm;
+    bool HLT_DoubleL2Mu23NoVtx_2Cha_CosmicSeed;
+    bool HLT_DoubleL2Mu23NoVtx_2Cha;
+    bool HLT_DoubleL2Mu10NoVtx_2Cha_VetoL3Mu0DxyMax1cm;
+    bool HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm;
+    bool HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm;
+    bool HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX;
 
     //L1 muon
     vector <int> l1mu_qual;

@@ -29,6 +29,7 @@ L1TMuonMiniAODAnalyzer::L1TMuonMiniAODAnalyzer(const edm::ParameterSet& iConfig)
     verticesToken_(consumes<std::vector<Vertex> > (iConfig.getParameter<edm::InputTag>("Vertices"))),
     pfcandsToken_(consumes<std::vector< pat::PackedCandidate>>(iConfig.getParameter<edm::InputTag>("PFCandidates"))),
     muonToken_(consumes< std::vector< pat::Muon> >(iConfig.getParameter<edm::InputTag>("Muons"))),
+    dispMuonToken_(consumes< std::vector< pat::Muon> >(iConfig.getParameter<edm::InputTag>("DispMuons"))),
     genpartToken_(consumes<GenParticleCollection> (iConfig.getParameter<edm::InputTag>("GenParticles"))),
     packedgenpartToken_(consumes<std::vector< pat::PackedGenParticle>>(iConfig.getParameter<edm::InputTag>("PackedGenParticles"))),
     trgresultsToken_(consumes<TriggerResults>(iConfig.getParameter<edm::InputTag>("Triggers"))),
@@ -86,6 +87,15 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
         if(TrigPath.Contains("HLT_IsoMu24_v"))HLT_IsoMu24 =true;
         if(TrigPath.Contains("HLT_IsoTkMu24_v"))HLT_IsoTkMu24 =true;
 	      if(TrigPath.Contains("HLT_Mu50_v"))HLT_Mu50 =true;
+	      if(TrigPath.Contains("HLT_DoubleMu43NoFiltersNoVtx_v"))HLT_DoubleMu43NoFiltersNoVtx =true;
+	      if(TrigPath.Contains("HLT_DoubleL3Mu16_10NoVtx_DxyMin0p01cm_v"))HLT_DoubleL3Mu16_10NoVtx_DxyMin0p01cm =true;
+	      if(TrigPath.Contains("HLT_DoubleL3dTksMu16_10NoVtx_DxyMin0p01cm_v"))HLT_DoubleL3dTksMu16_10NoVtx_DxyMin0p01cm =true;
+	      if(TrigPath.Contains("HLT_DoubleL2Mu23NoVtx_2Cha_CosmicSeed_v"))HLT_DoubleL2Mu23NoVtx_2Cha_CosmicSeed =true;
+	      if(TrigPath.Contains("HLT_DoubleL2Mu23NoVtx_2Cha_v"))HLT_DoubleL2Mu23NoVtx_2Cha =true;
+	      if(TrigPath.Contains("HLT_DoubleL2Mu10NoVtx_2Cha_VetoL3Mu0DxyMax1cm_v"))HLT_DoubleL2Mu10NoVtx_2Cha_VetoL3Mu0DxyMax1cm =true;
+	      if(TrigPath.Contains("HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm_v"))HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm =true;
+	      if(TrigPath.Contains("HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm_v"))HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm =true;
+	      if(TrigPath.Contains("HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX_v"))HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX =true;
       }
     }
   }
@@ -211,6 +221,118 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
 
   }
 
+  // Displaced Muons
+  edm::Handle< std::vector<pat::Muon> > thePatDispMuons;
+  iEvent.getByToken(dispMuonToken_,thePatDispMuons);
+  for( std::vector<pat::Muon>::const_iterator muon = (*thePatDispMuons).begin(); muon != (*thePatDispMuons).end(); muon++ ) {
+    if((&*muon)->pt() <0) continue; //Loose cut  on uncorrected pt 
+
+    //Rochester corrections: https://twiki.cern.ch/twiki/bin/viewauth/CMS/RochcorMuon#Rochester_Correction
+    //https://indico.cern.ch/event/926898/contributions/3897122/attachments/2052816/3441285/roccor.pdf
+    double ptmuoncorr= (&*muon)->pt();
+
+    // if( !IsMC_) ptmuoncorr *= rc.kScaleDT( (&*muon)->charge(),  (&*muon)->pt(), (&*muon)->eta(),(&*muon)->phi());
+    // else{
+    //   if( (&*muon)->genLepton() !=0)  ptmuoncorr *= rc.kSpreadMC( (&*muon)->charge(),  (&*muon)->pt(), (&*muon)->eta(),(&*muon)->phi(), (&*muon)->genLepton()->pt() );
+    //   else if(! ((&*muon)->innerTrack()).isNull()) ptmuoncorr *= rc.kSmearMC( (&*muon)->charge(),  (&*muon)->pt(), (&*muon)->eta(),(&*muon)->phi(),  (&*muon)->innerTrack()->hitPattern().trackerLayersWithMeasurement(), gRandom->Rndm());
+    // }
+
+    // bool passvetoid =  false;
+    // passvetoid =  (&*muon)->isStandAloneMuon() || (&*muon)->pt()>3;
+    // if(!passvetoid) continue;
+    //Counting the number of muons, not all of them will be stored
+    // if((&*muon)->pt()<MuonPtCut_)continue;
+
+    // store all reco muons for now
+    dispMuon_size++;
+    dispMuon_eta.push_back((&*muon)->eta());
+    dispMuon_phi.push_back((&*muon)->phi());
+    dispMuon_pt.push_back((&*muon)->pt());
+    dispMuon_ptCorr.push_back( ptmuoncorr );
+    dispMuon_charge.push_back((&*muon)->charge());
+    dispMuon_PassTightID.push_back(  (&*muon)->passed(reco::Muon::CutBasedIdMediumPrompt )&& (&*muon)->passed(reco::Muon::PFIsoTight ) );
+    dispMuon_PassLooseID.push_back(  (&*muon)->passed(reco::Muon::CutBasedIdLoose )&& (&*muon)->passed(reco::Muon::PFIsoLoose ) );
+    dispMuon_isSAMuon.push_back( (&*muon)->isStandAloneMuon());
+    if( !((&*muon)->innerTrack()).isNull()){
+      dispMuon_dz.push_back( (&*muon)->innerTrack()->dz(PV));
+      dispMuon_dzError.push_back( (&*muon)->innerTrack()->dzError());
+      dispMuon_dxy.push_back( (&*muon)->innerTrack()->dxy(PV));
+      dispMuon_dxyError.push_back( (&*muon)->innerTrack()->dxyError());
+      dispMuon_3dIP.push_back( (&*muon)->dB(pat::Muon::PV3D));
+      dispMuon_3dIPError.push_back((&*muon)->edB(pat::Muon::PV3D));
+    }
+    else{
+      dispMuon_dz.push_back( -999.);
+      dispMuon_dzError.push_back(-999.);
+      dispMuon_dxy.push_back(-999.);
+      dispMuon_dxyError.push_back(-999.);
+      dispMuon_3dIP.push_back(-999.);
+      dispMuon_3dIPError.push_back(-999.);
+    }
+
+
+    // extrapolation of muon track coordinates
+    TrajectoryStateOnSurface stateAtMuSt1 = muPropagator1st_.extrapolate(*muon);
+    if (stateAtMuSt1.isValid()) {
+        dispMuon_etaAtSt1.push_back(stateAtMuSt1.globalPosition().eta());
+        dispMuon_phiAtSt1.push_back(stateAtMuSt1.globalPosition().phi());
+    } else {
+        dispMuon_etaAtSt1.push_back(-999);
+        dispMuon_phiAtSt1.push_back(-999);
+    }
+
+    TrajectoryStateOnSurface stateAtMuSt2 = muPropagator2nd_.extrapolate(*muon);
+    if (stateAtMuSt2.isValid()) {
+        dispMuon_etaAtSt2.push_back(stateAtMuSt2.globalPosition().eta());
+        dispMuon_phiAtSt2.push_back(stateAtMuSt2.globalPosition().phi());
+    } else {
+        dispMuon_etaAtSt2.push_back(-999);
+        dispMuon_phiAtSt2.push_back(-999);
+    }
+
+
+    if (PassTriggerLeg("hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered",&*muon,iEvent) or
+        PassTriggerLeg("hltL3fDimuonL1f0CosmicL2NV2Chaf10L3NVf0Veto1PromptSimple",&*muon,iEvent) or
+        PassTriggerLeg("hltL2fL1sMuORL1f0DoubleL2NoVtx23Q2ChaCosmicSeed",&*muon,iEvent) or
+        PassTriggerLeg("hltL2DoubleMu23NoVertexL2Filtered2Cha",&*muon,iEvent) or
+        PassTriggerLeg("hltL3fL1DoubleMuf0L2NVf15f7L3SingleMuNVf0VetoDxy0p1cm",&*muon,iEvent) or
+        PassTriggerLeg("hltL3fL1DoubleMuf0L2NVf15f7L3SingleMuNVf16DisplacedHybDxy0p1cm",&*muon,iEvent)) {
+      dispMuon_isDispL2HLTDiMuon.push_back(true);
+    } else {
+      dispMuon_isDispL2HLTDiMuon.push_back(false);
+    }
+
+    if (PassTriggerLeg("hltL3fL1DoubleMuf0L2NVf15f7L3DoubleMuNVf10Displaced",&*muon,iEvent) or
+        PassTriggerLeg("hltL3fL1DoubleMuf0L2NVf15f7L3SingleMuNVf16Displaced",&*muon,iEvent) or
+        PassTriggerLeg("hltL3dTkfL1DoubleMuf0L2NVf15f7L3SingleMuNVf16Displaced",&*muon,iEvent) or
+        PassTriggerLeg("hltL3dTkfL1DoubleMuf0L2NVf15f7L3DoubleMuNVf10Displaced",&*muon,iEvent) or
+        PassTriggerLeg("hltL3fDimuonL1f0L2NVf16L3NoFiltersNoVtxFiltered43",&*muon,iEvent)) {
+      dispMuon_isDispHLTDiMuon.push_back(true);
+    } else {
+      dispMuon_isDispHLTDiMuon.push_back(false);
+    }
+
+    if (PassTriggerLeg("hltL2fL1fMuf0DoubleL2MuNoVtx10Q",&*muon,iEvent) or
+        PassTriggerLeg("hltL2fL1sMuORL1f0DoubleL2NoVtx23Q",&*muon,iEvent) or
+        PassTriggerLeg("hltL2fL1DoubleMuf0L2DoubleMuNoVtx2ChaFiltered7",&*muon,iEvent) or
+        PassTriggerLeg("hltL2fL1DoubleMuf0L2DoubleMuNoVtxFiltered7",&*muon,iEvent) or
+        PassTriggerLeg("hltL2fL1DoubleMuf0L2DoubleMuDisplacedFiltered7",&*muon,iEvent) or
+        PassTriggerLeg("hltL2fDimuonL1f0L2NoVtxFiltered16",&*muon,iEvent)) {
+      dispMuon_isL2DispHLTMuon.push_back(true);
+    } else {
+      dispMuon_isL2DispHLTMuon.push_back(false);
+    }
+
+    dispMuon_isNoBPTXHLTMuon.push_back(PassTriggerLeg("hltL2fL1sMuOpenNotBptxORNoHaloMu3BXL1f0NoVtxCosmicSeedMeanTimerL2Filtered40Sta3",&*muon,iEvent));
+    dispMuon_isL2NoVtxHLTMuon.push_back(PassTriggerLeg("hltL2fL1fMuf0DoubleL2MuNoVtx10Q", &*muon, iEvent));
+    dispMuon_isL2CosmicSeedHLTMuon.push_back(PassTriggerLeg("hltL2CosmicMuons", &*muon, iEvent));
+
+    dispMuon_isL1NoBPTXMuon.push_back(PassTriggerLeg("hltL1sSingleMuOpenEr1p4NotBptxOR3BXORL1sSingleMuOpenEr1p1NotBptxOR3BX",&*muon,iEvent));
+    dispMuon_isL1DispMuon.push_back(PassTriggerLeg("hltL1sDoubleMu155SQOR157ORTripleMu444ORDoubleMu0upt",&*muon,iEvent));
+
+
+  }
+
 
   if(SaveTree_)outputTree->Fill();
 
@@ -263,6 +385,38 @@ void L1TMuonMiniAODAnalyzer::beginJob() {
 
   outputTree->Branch("muon_size", &muon_size, "muon_size/I");
 
+  outputTree->Branch("dispMuon_eta",&dispMuon_eta);
+  outputTree->Branch("dispMuon_etaAtSt1",&dispMuon_etaAtSt1);
+  outputTree->Branch("dispMuon_etaAtSt2",&dispMuon_etaAtSt2);
+  outputTree->Branch("dispMuon_phi",&dispMuon_phi);
+  outputTree->Branch("dispMuon_phiAtSt1",&dispMuon_phiAtSt1);
+  outputTree->Branch("dispMuon_phiAtSt2",&dispMuon_phiAtSt2);
+  outputTree->Branch("dispMuon_pt",&dispMuon_pt);
+  outputTree->Branch("dispMuon_ptCorr",&dispMuon_ptCorr);
+  outputTree->Branch("dispMuon_charge",&dispMuon_charge);
+
+  outputTree->Branch("dispMuon_dz",&dispMuon_dz);
+  outputTree->Branch("dispMuon_dzError",&dispMuon_dzError);
+  outputTree->Branch("dispMuon_dxy",&dispMuon_dxy);
+  outputTree->Branch("dispMuon_dxyError",&dispMuon_dxyError);
+  outputTree->Branch("dispMuon_3dIP",&dispMuon_3dIP);
+  outputTree->Branch("dispMuon_3dIPError",&dispMuon_3dIPError);
+
+  outputTree->Branch("dispMuon_PassTightID",&dispMuon_PassTightID);
+  outputTree->Branch("dispMuon_PassLooseID",&dispMuon_PassLooseID);
+  outputTree->Branch("dispMuon_isSAdispMuon",&dispMuon_isSAMuon);
+
+  outputTree->Branch("dispMuon_isDispL2HLTDiMuon",&dispMuon_isDispL2HLTDiMuon);
+  outputTree->Branch("dispMuon_isDispHLTDiMuon",&dispMuon_isDispHLTDiMuon);
+  outputTree->Branch("dispMuon_isL2DispHLTMuon",&dispMuon_isL2DispHLTMuon);
+  outputTree->Branch("dispMuon_isNoBPTXHLTMuon",&dispMuon_isNoBPTXHLTMuon);
+  outputTree->Branch("dispMuon_isL2NoVtxHLTMuon",&dispMuon_isL2NoVtxHLTMuon);
+  outputTree->Branch("dispMuon_isL2CosmicSeedHLTMuon",&dispMuon_isL2CosmicSeedHLTMuon);
+  outputTree->Branch("dispMuon_isL1NoBPTXMuon",&dispMuon_isL1NoBPTXMuon);
+  outputTree->Branch("dispMuon_isL1DispMuon",&dispMuon_isL1DispMuon);
+
+  outputTree->Branch("dispMuon_size", &dispMuon_size, "dispMuon_size/I");
+
 
   outputTree->Branch("_mll", &_mll, "_mll/f");
   outputTree->Branch("_ptll", &_ptll, "_ptll/f");
@@ -276,6 +430,15 @@ void L1TMuonMiniAODAnalyzer::beginJob() {
   outputTree->Branch("HLT_IsoMu24",&HLT_IsoMu24,"HLT_IsoMu24/O");
   outputTree->Branch("HLT_IsoTkMu24",&HLT_IsoTkMu24,"HLT_IsoTkMu24/O");
   outputTree->Branch("HLT_Mu50",&HLT_Mu50,"HLT_Mu50/O");
+  outputTree->Branch("HLT_DoubleMu43NoFiltersNoVtx",&HLT_DoubleMu43NoFiltersNoVtx,"HLT_MHLT_DoubleMu43NoFiltersNoVtxu50/O");
+  outputTree->Branch("HLT_DoubleL3Mu16_10NoVtx_DxyMin0p01cm",&HLT_DoubleL3Mu16_10NoVtx_DxyMin0p01cm,"HLT_DoubleL3Mu16_10NoVtx_DxyMin0p01cm/O");
+  outputTree->Branch("HLT_DoubleL3dTksMu16_10NoVtx_DxyMin0p01cm",&HLT_DoubleL3dTksMu16_10NoVtx_DxyMin0p01cm,"HLT_DoubleL3dTksMu16_10NoVtx_DxyMin0p01cm/O");
+  outputTree->Branch("HLT_DoubleL2Mu23NoVtx_2Cha_CosmicSeed",&HLT_DoubleL2Mu23NoVtx_2Cha_CosmicSeed,"HLT_DoubleL2Mu23NoVtx_2Cha_CosmicSeed/O");
+  outputTree->Branch("HLT_DoubleL2Mu23NoVtx_2Cha",&HLT_DoubleL2Mu23NoVtx_2Cha,"HLT_DoubleL2Mu23NoVtx_2Cha/O");
+  outputTree->Branch("HLT_DoubleL2Mu10NoVtx_2Cha_VetoL3Mu0DxyMax1cm",&HLT_DoubleL2Mu10NoVtx_2Cha_VetoL3Mu0DxyMax1cm,"HLT_DoubleL2Mu10NoVtx_2Cha_VetoL3Mu0DxyMax1cm/O");
+  outputTree->Branch("HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm",&HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm,"HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm/O");
+  outputTree->Branch("HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm",&HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm,"HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm/O");
+  outputTree->Branch("HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX",&HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX,"HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX/O");
 
   outputTree->Branch("l1mu_qual",&l1mu_qual);
   outputTree->Branch("l1mu_charge",&l1mu_charge);
@@ -313,6 +476,15 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
   HLT_IsoMu24 = false;
   HLT_IsoTkMu24 = false;
   HLT_Mu50 = false;
+  HLT_DoubleMu43NoFiltersNoVtx = false;
+  HLT_DoubleL3Mu16_10NoVtx_DxyMin0p01cm = false;
+  HLT_DoubleL3dTksMu16_10NoVtx_DxyMin0p01cm = false;
+  HLT_DoubleL2Mu23NoVtx_2Cha_CosmicSeed = false;
+  HLT_DoubleL2Mu23NoVtx_2Cha = false;
+  HLT_DoubleL2Mu10NoVtx_2Cha_VetoL3Mu0DxyMax1cm = false;
+  HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm = false;
+  HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm = false;
+  HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX = false;
 
   Flag_goodVertices = false;
   Flag_globalTightHalo2016Filter = false;
@@ -346,6 +518,38 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
   muon_isSingleMuMuon.clear();
 
   muon_size = 0;
+
+  dispMuon_eta.clear();
+  dispMuon_etaAtSt1.clear();
+  dispMuon_etaAtSt2.clear();
+  dispMuon_phi.clear();
+  dispMuon_phiAtSt1.clear();
+  dispMuon_phiAtSt2.clear();
+  dispMuon_pt.clear();
+  dispMuon_ptCorr.clear();
+  dispMuon_charge.clear();
+
+  dispMuon_dz.clear();
+  dispMuon_dzError.clear();
+  dispMuon_dxy.clear();
+  dispMuon_dxyError.clear();
+  dispMuon_3dIP.clear();
+  dispMuon_3dIPError.clear();
+
+  dispMuon_PassTightID.clear();
+  dispMuon_PassLooseID.clear();
+  dispMuon_isSAMuon.clear() ;
+
+  dispMuon_isDispL2HLTDiMuon.clear();
+  dispMuon_isDispHLTDiMuon.clear();
+  dispMuon_isL2DispHLTMuon.clear();
+  dispMuon_isNoBPTXHLTMuon.clear();
+  dispMuon_isL2NoVtxHLTMuon.clear();
+  dispMuon_isL2CosmicSeedHLTMuon.clear();
+  dispMuon_isL1NoBPTXMuon.clear();
+  dispMuon_isL1DispMuon.clear();
+
+  dispMuon_size = 0;
 
   l1mu_qual.clear();
   l1mu_charge.clear();
