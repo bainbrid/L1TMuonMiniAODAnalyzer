@@ -14,6 +14,7 @@ In principle it should work in any 12_4/5/6_X release. Example using 12_4_8:
 cmsrel CMSSW_12_4_8
 cd CMSSW_12_4_8/src
 cmsenv
+voms-proxy-init --voms cms --valid 24:00:00
 git cms-init
 
 git clone git@github.com:eyigitba/L1TMuonMiniAODAnalyzer.git
