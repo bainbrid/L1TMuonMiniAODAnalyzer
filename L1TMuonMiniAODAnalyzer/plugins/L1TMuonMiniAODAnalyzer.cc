@@ -96,6 +96,13 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
 	      if(TrigPath.Contains("HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm_v"))HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm =true;
 	      if(TrigPath.Contains("HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm_v"))HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm =true;
 	      if(TrigPath.Contains("HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX_v"))HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX =true;
+	      if(TrigPath.Contains("HLT_DoubleMu4_3_Bs_v"))HLT_DoubleMu4_3_Bs =true;
+	      if(TrigPath.Contains("HLT_DoubleMu4_3_Jpsi_v"))HLT_DoubleMu4_3_Jpsi =true;
+	      if(TrigPath.Contains("HLT_DoubleMu4_3_Photon4_BsToMMG_v"))HLT_DoubleMu4_3_Photon4_BsToMMG =true;
+	      if(TrigPath.Contains("HLT_DoubleMu4_LowMass_Displaced_v"))HLT_DoubleMu4_LowMass_Displaced =true;
+	      if(TrigPath.Contains("HLT_DoubleMu4_3_LowMass_v"))HLT_DoubleMu4_3_LowMass =true;
+	      if(TrigPath.Contains("HLT_DoubleMu3_TkMu_DsTau3Mu_v"))HLT_DoubleMu3_TkMu_DsTau3Mu =true;
+	      if(TrigPath.Contains("HLT_DoubleMu3_Trk_Tau3mu_v"))HLT_DoubleMu3_Trk_Tau3mu =true;
       }
     }
   }
@@ -216,8 +223,21 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
 
     muon_isIsoHLTMuon.push_back(PassTriggerLeg("hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered",&*muon,iEvent));
     muon_isHLTMuon.push_back(PassTriggerLeg("hltL3fL1sMu22Or25L1f0L2f10QL3Filtered50Q",&*muon,iEvent));
-    muon_isSingleMuMuon.push_back(PassTriggerLeg("hltL1sSingleMu22or25",&*muon,iEvent));
+    muon_isTauTo3MuMuon.push_back(PassTriggerLeg("hltL1sDoubleMu0er2p0SQOSdEtaMax1p6orTripleMu21p50",&*muon,iEvent));
+    if (PassTriggerLeg("hltL1sDoubleMuForBs",&*muon,iEvent) or
+        PassTriggerLeg("hltL1sDoubleMuForBsToMMG",&*muon,iEvent)) {
+      muon_isDoubleMuForBsMuon.push_back(true);
+    } else {
+      muon_isDoubleMuForBsMuon.push_back(false);
+    }
+    if (PassTriggerLeg("hltL1sDoubleMuForLowMassInclusive",&*muon,iEvent) or
+        PassTriggerLeg("hltL1sDoubleMuForLowMassDisplaced",&*muon,iEvent)) {
+      muon_isDoubleMuLowMassMuon.push_back(true);
+    } else {
+      muon_isDoubleMuLowMassMuon.push_back(false);
+    }
 
+    muon_isSingleMuMuon.push_back(PassTriggerLeg("hltL1sSingleMu22or25",&*muon,iEvent));
 
   }
 
@@ -439,6 +459,13 @@ void L1TMuonMiniAODAnalyzer::beginJob() {
   outputTree->Branch("HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm",&HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm,"HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm/O");
   outputTree->Branch("HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm",&HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm,"HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm/O");
   outputTree->Branch("HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX",&HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX,"HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX/O");
+  outputTree->Branch("HLT_DoubleMu4_3_Bs",&HLT_DoubleMu4_3_Bs,"HLT_DoubleMu4_3_Bs/O");
+  outputTree->Branch("HLT_DoubleMu4_3_Jpsi",&HLT_DoubleMu4_3_Jpsi,"HLT_DoubleMu4_3_Jpsi/O");
+  outputTree->Branch("HLT_DoubleMu4_3_Photon4_BsToMMG",&HLT_DoubleMu4_3_Photon4_BsToMMG,"HLT_DoubleMu4_3_Photon4_BsToMMG/O");
+  outputTree->Branch("HLT_DoubleMu4_LowMass_Displaced",&HLT_DoubleMu4_LowMass_Displaced,"HLT_DoubleMu4_LowMass_Displaced/O");
+  outputTree->Branch("HLT_DoubleMu4_3_LowMass",&HLT_DoubleMu4_3_LowMass,"HLT_DoubleMu4_3_LowMass/O");
+  outputTree->Branch("HLT_DoubleMu3_TkMu_DsTau3Mu",&HLT_DoubleMu3_TkMu_DsTau3Mu,"HLT_DoubleMu3_TkMu_DsTau3Mu/O");
+  outputTree->Branch("HLT_DoubleMu3_Trk_Tau3mu",&HLT_DoubleMu3_Trk_Tau3mu,"HLT_DoubleMu3_Trk_Tau3mu/O");
 
   outputTree->Branch("l1mu_qual",&l1mu_qual);
   outputTree->Branch("l1mu_charge",&l1mu_charge);

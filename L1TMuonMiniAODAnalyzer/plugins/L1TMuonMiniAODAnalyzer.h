@@ -162,6 +162,9 @@ class L1TMuonMiniAODAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResou
     //Trigger matching variables: is a reco object matched to a trigger filter
     vector<Bool_t> muon_isIsoHLTMuon;
     vector<Bool_t> muon_isHLTMuon;
+    vector<Bool_t> muon_isTauTo3MuMuon;
+    vector<Bool_t> muon_isDoubleMuForBsMuon;
+    vector<Bool_t> muon_isDoubleMuLowMassMuon;
     vector<Bool_t> muon_isSingleMuMuon;
 
     int muon_size;
@@ -224,6 +227,13 @@ class L1TMuonMiniAODAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResou
     bool HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm;
     bool HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm;
     bool HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX;
+    bool HLT_DoubleMu4_3_Bs;
+    bool HLT_DoubleMu4_3_Jpsi;
+    bool HLT_DoubleMu4_3_Photon4_BsToMMG;
+    bool HLT_DoubleMu4_LowMass_Displaced;
+    bool HLT_DoubleMu4_3_LowMass;
+    bool HLT_DoubleMu3_TkMu_DsTau3Mu;
+    bool HLT_DoubleMu3_Trk_Tau3mu;
 
     //L1 muon
     vector <int> l1mu_qual;
