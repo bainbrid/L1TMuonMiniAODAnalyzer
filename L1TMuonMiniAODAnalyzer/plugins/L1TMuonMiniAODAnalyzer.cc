@@ -35,6 +35,9 @@ L1TMuonMiniAODAnalyzer::L1TMuonMiniAODAnalyzer(const edm::ParameterSet& iConfig)
     trgresultsToken_(consumes<TriggerResults>(iConfig.getParameter<edm::InputTag>("Triggers"))),
     trigobjectToken_(consumes<pat::TriggerObjectStandAloneCollection>(edm::InputTag("slimmedPatTrigger"))),
     l1MuonToken_(consumes<l1t::MuonBxCollection>(edm::InputTag("gmtStage2Digis","Muon"))),
+    ugtToken_(consumes<GlobalAlgBlkBxCollection>(edm::InputTag("gtStage2Digis"))),
+    l1GtMenuToken_(esConsumes<L1TUtmTriggerMenu, L1TUtmTriggerMenuRcd>()),
+
 
     MuonPtCut_(iConfig.getParameter<double>("MuonPtCut")),
     SaveTree_(iConfig.getParameter<bool>("SaveTree")),
@@ -42,7 +45,8 @@ L1TMuonMiniAODAnalyzer::L1TMuonMiniAODAnalyzer(const edm::ParameterSet& iConfig)
     Debug_(iConfig.getParameter<bool>("Debug")),
 
     muPropagatorSetup1st_(iConfig.getParameter<edm::ParameterSet>("muProp1st"), consumesCollector()),
-    muPropagatorSetup2nd_(iConfig.getParameter<edm::ParameterSet>("muProp2nd"), consumesCollector())
+    muPropagatorSetup2nd_(iConfig.getParameter<edm::ParameterSet>("muProp2nd"), consumesCollector()),
+    results_(nullptr)
 
 {
   //now do what ever initialization is needed
@@ -74,7 +78,27 @@ void L1TMuonMiniAODAnalyzer::analyze(const edm::Event& iEvent, const edm::EventS
   _lumiBlock = iEvent.luminosityBlock();
   _bx=iEvent.bunchCrossing();
 
-  //Triggers 
+  //Triggers
+  unsigned long long id = iSetup.get<L1TUtmTriggerMenuRcd>().cacheIdentifier();
+  if (id != cache_id_) {
+    cache_id_ = id;
+    edm::ESHandle<L1TUtmTriggerMenu> menu;
+    menu = iSetup.getHandle(l1GtMenuToken_);
+
+    for (auto const &keyval : menu->getAlgorithmMap()) {
+      std::string const &name = keyval.second.getName();
+      unsigned int index = keyval.second.getIndex();
+      //std::cerr << fmt::sprintf("bit %4d: %s", index, name) << std::endl;
+      outputTree->SetAlias(name.c_str(), fmt::sprintf("L1uGT.m_algoDecisionInitial[%d]", index).c_str());
+    }
+  }
+
+  edm::Handle<GlobalAlgBlkBxCollection> ugt;
+  iEvent.getByToken(ugtToken_, ugt);
+  if (ugt.isValid()) {
+    results_ = &ugt->at(0, 0);
+  }
+
   edm::Handle<TriggerResults> trigResults;
   iEvent.getByToken(trgresultsToken_, trigResults);
   if( !trigResults.failedToGet() ) {
@@ -372,6 +396,8 @@ void L1TMuonMiniAODAnalyzer::beginJob() {
     outputTree->Branch("trueNVtx", &trueNVtx,"trueNVtx/I");
   }
 
+  outputTree->Branch("L1uGT", "GlobalAlgBlk", &results_, 32000, 3);
+
   outputTree->Branch("Flag_goodVertices",&Flag_goodVertices,"Flag_goodVertices/O");
   outputTree->Branch("Flag_globalTightHalo2016Filter",&Flag_globalTightHalo2016Filter,"Flag_globalTightHalo2016Filter/O");
   outputTree->Branch("Flag_globalSuperTightHalo2016Filter",&Flag_globalSuperTightHalo2016Filter,"Flag_globalSuperTightHalo2016Filter/O");
@@ -401,6 +427,9 @@ void L1TMuonMiniAODAnalyzer::beginJob() {
 
   outputTree->Branch("muon_isIsoHLTMuon",&muon_isIsoHLTMuon);
   outputTree->Branch("muon_isHLTMuon",&muon_isHLTMuon);
+  outputTree->Branch("muon_isTauTo3MuMuon",&muon_isTauTo3MuMuon);
+  outputTree->Branch("muon_isDoubleMuForBsMuon",&muon_isDoubleMuForBsMuon);
+  outputTree->Branch("muon_isDoubleMuLowMassMuon",&muon_isDoubleMuLowMassMuon);
   outputTree->Branch("muon_isSingleMuMuon",&muon_isSingleMuMuon);
 
   outputTree->Branch("muon_size", &muon_size, "muon_size/I");
@@ -498,6 +527,8 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
   _n_PV = 0;
   trueNVtx = 0;
 
+  results_ = nullptr;
+  cache_id_ = 0;
 
   HLT_IsoMu27 = false;
   HLT_IsoMu24 = false;
@@ -512,6 +543,14 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
   HLT_DoubleL2Mu_L3Mu16NoVtx_VetoL3Mu0DxyMax0p1cm = false;
   HLT_DoubleL2Mu10NoVtx_2Cha_CosmicSeed_VetoL3Mu0DxyMax1cm = false;
   HLT_L2Mu40_NoVertex_3Sta_NoBPTX3BX = false;
+  HLT_DoubleMu4_3_Bs = false;
+  HLT_DoubleMu4_3_Jpsi = false;
+  HLT_DoubleMu4_3_Photon4_BsToMMG = false;
+  HLT_DoubleMu4_LowMass_Displaced = false;
+  HLT_DoubleMu4_3_LowMass = false;
+  HLT_DoubleMu3_TkMu_DsTau3Mu = false;
+  HLT_DoubleMu3_Trk_Tau3mu = false;
+
 
   Flag_goodVertices = false;
   Flag_globalTightHalo2016Filter = false;
@@ -542,6 +581,9 @@ void L1TMuonMiniAODAnalyzer::InitandClearStuff() {
 
   muon_isIsoHLTMuon.clear();
   muon_isHLTMuon.clear();
+  muon_isTauTo3MuMuon.clear();
+  muon_isDoubleMuForBsMuon.clear();
+  muon_isDoubleMuLowMassMuon.clear();
   muon_isSingleMuMuon.clear();
 
   muon_size = 0;

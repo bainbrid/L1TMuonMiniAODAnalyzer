@@ -26,6 +26,7 @@
 #include "TDirectory.h"
 #include "TTree.h"
 #include "TMath.h"
+#include <fmt/printf.h>
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -39,6 +40,9 @@
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
+#include "CondFormats/DataRecord/interface/L1TUtmTriggerMenuRcd.h"
+#include "CondFormats/L1TObjects/interface/L1TUtmTriggerMenu.h"
+
 
 // Data formats
 #include "DataFormats/TrackReco/interface/Track.h"
@@ -104,8 +108,10 @@ class L1TMuonMiniAODAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResou
     edm::EDGetTokenT<std::vector< pat::PackedGenParticle>> packedgenpartToken_;
     edm::EDGetTokenT<edm::TriggerResults> trgresultsToken_;
     edm::EDGetTokenT<pat::TriggerObjectStandAloneCollection> trigobjectToken_;
-    edm::EDGetTokenT<BXVector<GlobalAlgBlk>> l1GtToken_;
+    // edm::EDGetTokenT<BXVector<GlobalAlgBlk>> l1GtToken_;
     edm::EDGetTokenT<l1t::MuonBxCollection>l1MuonToken_;
+    edm::EDGetTokenT<GlobalAlgBlkBxCollection> ugtToken_;
+    edm::ESGetToken<L1TUtmTriggerMenu, L1TUtmTriggerMenuRcd> l1GtMenuToken_;
 
     Float_t MuonPtCut_;
     Bool_t SaveTree_, IsMC_, Debug_;
@@ -129,6 +135,9 @@ class L1TMuonMiniAODAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResou
     // Float_t _LV_errx,_LV_erry,_LV_errz;
     // Float_t _PUV1_x,_PUV1_y,_PUV1_z;
     int trueNVtx;
+
+    GlobalAlgBlk const *results_;
+    unsigned long long cache_id_;
 
     //MINIAOD original MET filters decisions
     bool Flag_goodVertices;
