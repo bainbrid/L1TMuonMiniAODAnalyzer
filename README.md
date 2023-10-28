@@ -17,7 +17,7 @@ cmsenv
 voms-proxy-init --voms cms --valid 24:00:00
 git cms-init
 
-git clone git@github.com:eyigitba/L1TMuonMiniAODAnalyzer.git
+git clone git@github.com:bainbrid/L1TMuonMiniAODAnalyzer.git
 scram b -j8
 
 cmsRun L1TMuonMiniAODAnalyzer/pset_files/run3_data.py
