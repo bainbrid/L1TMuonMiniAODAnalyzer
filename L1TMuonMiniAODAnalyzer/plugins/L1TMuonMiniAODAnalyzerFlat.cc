@@ -57,8 +57,6 @@ L1TMuonMiniAODAnalyzerFlat::L1TMuonMiniAODAnalyzerFlat(const edm::ParameterSet& 
   if ( iConfig.exists("minTrgQuality") ) {
     minTrgQuality_ = iConfig.getParameter<int>("minTrgQuality");
   }
-
-  
   
 }
 
