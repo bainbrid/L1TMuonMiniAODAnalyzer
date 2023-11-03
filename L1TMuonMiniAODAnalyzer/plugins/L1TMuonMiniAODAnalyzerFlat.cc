@@ -161,9 +161,15 @@ void L1TMuonMiniAODAnalyzerFlat::efficiencies(const edm::Event& iEvent,
     // Loop through RECO muons
     int temp_idx = -1;
     float temp_dr = genRecoMatchingMaxDR_;
-    unsigned int muon_size = (unsigned int)thePatMuons->size();
-    for( unsigned int imuon = 0; imuon < muon_size; ++imuon ) {
-      edm::Ptr<pat::Muon> muon(thePatMuons,imuon);
+    //unsigned int muon_size = (unsigned int)thePatMuons->size();
+    std::vector<pat::Muon>::const_iterator muon = (*thePatMuons).begin();
+    std::vector<pat::Muon>::const_iterator begin = (*thePatMuons).begin();
+    std::vector<pat::Muon>::const_iterator end = (*thePatMuons).end();
+    for( ; muon != end; ++muon ) {
+
+      // If already matched to a GEN muon, ignore
+      int imuon = std::distance(muon,begin);
+      if ( std::find(matched_muon.begin(), matched_muon.end(), imuon) != matched_muon.end() ) { continue; }
       
       // Only consider RECO muons in acceptance
       bool acc_reco = 
@@ -174,23 +180,44 @@ void L1TMuonMiniAODAnalyzerFlat::efficiencies(const edm::Event& iEvent,
 	// Only consider RECO muons passing Loose ID
 	bool loose_id = muon->passed(reco::Muon::CutBasedIdLoose);
 	if (loose_id) {
+
+	  // extrapolation of muon track coordinates
+	  TrajectoryStateOnSurface stateAtSt1 = muPropagator1st_.extrapolate(*muon);
+	  if (stateAtSt1.isValid()) {
+	    float etaAtSt1 = stateAtSt1.globalPosition().eta();
+	    float phiAtSt1 = stateAtSt1.globalPosition().phi();
 	  
-	  // If already matched to a GEN muon, ignore
-	  if ( std::find(matched_muon.begin(), matched_muon.end(), imuon) != matched_muon.end() ) { continue; }
-	  float dr = reco::deltaR( gen->eta(), gen->phi(), muon->eta(), muon->phi() );
-	  int dq = gen->charge() * muon->charge();
-	  if ( dr < temp_dr && (dq==1 || !correctMuonCharge_) ) {
-	    //@@ matched!
-	    temp_dr = dr;
-	    temp_idx = (int)imuon;
+	    TrajectoryStateOnSurface stateAtSt2 = muPropagator2nd_.extrapolate(*muon);
+	    if (stateAtSt2.isValid()) {
+	      float etaAtSt2 = stateAtSt2.globalPosition().eta();
+	      float phiAtSt2 = stateAtSt2.globalPosition().phi();
+	  
+	      float dr = reco::deltaR( gen->eta(), gen->phi(), etaAtSt2, phiAtSt2 );
+	      int dq = gen->charge() * muon->charge();
+
+	      if ( dr < temp_dr && (dq==1 || !correctMuonCharge_) ) {
+		temp_dr = dr;
+		temp_idx = (int)imuon;
+		muon_etaAtSt1 = etaAtSt1;
+		muon_phiAtSt1 = phiAtSt1;
+		muon_etaAtSt2 = etaAtSt2;
+		muon_phiAtSt2 = phiAtSt2;
+	      }
+	    }
 	  }
 	}
       }
     }
     
-    // If matched, continue
-    if ( temp_idx >= 0 ) {
-	
+    if ( temp_idx < 0 ) {
+      // If not matched, reset
+      muon_etaAtSt1 = 0.;
+      muon_phiAtSt1 = 0.;
+      muon_etaAtSt2 = 0.;
+      muon_phiAtSt2 = 0.;
+    } else {
+      // If matched, continue ...
+      
       // Store matched result
       gen_muon_idx = temp_idx;
       gen_muon_match = (gen_muon_idx>=0);
@@ -221,27 +248,15 @@ void L1TMuonMiniAODAnalyzerFlat::efficiencies(const edm::Event& iEvent,
 	muon_3dIPError = reco->edB(pat::Muon::PV3D);
       }
       
-      //      // extrapolation of muon track coordinates
-      //      TrajectoryStateOnSurface stateAtMuSt1 = muPropagator1st_.extrapolate(*reco);
-      //      if (stateAtMuSt1.isValid()) {
-      //        muon_etaAtSt1 = stateAtMuSt1.globalPosition().eta();
-      //        muon_phiAtSt1 = stateAtMuSt1.globalPosition().phi();
-      //      }
-      //      
-      //      TrajectoryStateOnSurface stateAtMuSt2 = muPropagator2nd_.extrapolate(*reco);
-      //      if (stateAtMuSt2.isValid()) {
-      //        muon_etaAtSt2 = stateAtMuSt2.globalPosition().eta();
-      //        muon_phiAtSt2 = stateAtMuSt2.globalPosition().phi();
-      //      }
-      
       // Iterate through trigger muons
       int tmp_idx = -1;
       float tmp_dr = trgMuonMatchingMaxDR_;
       l1t::MuonBxCollection::const_iterator tmp;
       l1t::MuonBxCollection::const_iterator iter = l1muoncoll->begin(0);
+      l1t::MuonBxCollection::const_iterator begin = l1muoncoll->begin(0);
       l1t::MuonBxCollection::const_iterator end = l1muoncoll->end(0);
       for( ; iter != end; ++iter ) {
-	int itrg = std::distance(iter,end);
+	int itrg = std::distance(iter,begin);
 	
 	// If already matched to a muon, ignore
 	if ( std::find(matched_trg.begin(), matched_trg.end(), itrg) != matched_trg.end() ) { continue; }
@@ -324,9 +339,10 @@ void L1TMuonMiniAODAnalyzerFlat::purities(const edm::Event& iEvent,
 
   // Iterate through trigger objects
   l1t::MuonBxCollection::const_iterator iter = l1muoncoll->begin(0);
+  //l1t::MuonBxCollection::const_iterator begin = l1muoncoll->begin(0);
   l1t::MuonBxCollection::const_iterator end = l1muoncoll->end(0);
   for( ; iter != end; ++iter ) {
-    //int itrg = std::distance(iter,end);
+    //int itrg = std::distance(iter,begin);
 
     // Only consider TRG muons in acceptance and with HW quality
     bool acc_trg = 
@@ -350,10 +366,16 @@ void L1TMuonMiniAODAnalyzerFlat::purities(const edm::Event& iEvent,
       // Loop through RECO muons
       int tmp_idx = -1;
       float tmp_dr = trgMuonMatchingMaxDR_;
-      unsigned int muon_size = (unsigned int)thePatMuons->size();
-      for( unsigned int imuon = 0; imuon < muon_size; ++imuon ) {
-	edm::Ptr<pat::Muon> muon(thePatMuons,imuon);
+      //unsigned int muon_size = (unsigned int)thePatMuons->size();
+      std::vector<pat::Muon>::const_iterator muon = (*thePatMuons).begin();
+      std::vector<pat::Muon>::const_iterator begin = (*thePatMuons).begin();
+      std::vector<pat::Muon>::const_iterator end = (*thePatMuons).end();
+      for( ; muon != end; ++muon ) {
 	
+	// If already matched to a muon, ignore
+	int imuon = std::distance(muon,begin);
+	if ( std::find(matched_trg.begin(), matched_trg.end(), imuon) != matched_trg.end() ) { continue; }
+
 	// Only consider RECO muons in acceptance
 	bool acc_reco = 
 	  ( muon->pt() > recoMuonPtThreshold_ )
@@ -363,22 +385,43 @@ void L1TMuonMiniAODAnalyzerFlat::purities(const edm::Event& iEvent,
 	  // Only consider RECO muons passing Loose ID
 	  bool loose_id = muon->passed(reco::Muon::CutBasedIdLoose);
 	  if (loose_id) {
+
+	    // extrapolation of muon track coordinates
+	    TrajectoryStateOnSurface stateAtSt1 = muPropagator1st_.extrapolate(*muon);
+	    if (stateAtSt1.isValid()) {
+	      float etaAtSt1 = stateAtSt1.globalPosition().eta();
+	      float phiAtSt1 = stateAtSt1.globalPosition().phi();
 	    
-	    // If already matched to a muon, ignore
-	    if ( std::find(matched_trg.begin(), matched_trg.end(), imuon) != matched_trg.end() ) { continue; }
-	    float dr = reco::deltaR( muon->eta(), muon->phi(), iter->etaAtVtx(), iter->phiAtVtx() );
-	    int dq = iter->charge() * muon->charge();
-	    if ( (dr<tmp_dr) && (dq==1 || !correctTrgCharge_) ) {
-	      //@@ matched!
-	      tmp_dr = dr;
-	      tmp_idx = (int)imuon;
+	      TrajectoryStateOnSurface stateAtSt2 = muPropagator2nd_.extrapolate(*muon);
+	      if (stateAtSt2.isValid()) {
+		float etaAtSt2 = stateAtSt2.globalPosition().eta();
+		float phiAtSt2 = stateAtSt2.globalPosition().phi();
+	    
+		float dr = reco::deltaR( etaAtSt2, phiAtSt2, iter->eta(), iter->phi() );
+		int dq = iter->charge() * muon->charge();
+
+		if ( (dr<tmp_dr) && (dq==1 || !correctTrgCharge_) ) {
+		  tmp_dr = dr;
+		  tmp_idx = (int)imuon;
+		  muon_etaAtSt1 = etaAtSt1;
+		  muon_phiAtSt1 = phiAtSt1;
+		  muon_etaAtSt2 = etaAtSt2;
+		  muon_phiAtSt2 = phiAtSt2;
+		}
+	      }
 	    }
 	  }
 	}
       }
 	
-      // If matched, continue
-      if ( tmp_idx >= 0 ) {
+      if ( tmp_idx < 0 ) {
+	// If not matched, reset
+	muon_etaAtSt1 = 0.;
+	muon_phiAtSt1 = 0.;
+	muon_etaAtSt2 = 0.;
+	muon_phiAtSt2 = 0.;
+      } else {
+	// If matched, continue ...
 	
 	// Store matched result
 	muon_trg_idx = tmp_idx;
@@ -410,19 +453,6 @@ void L1TMuonMiniAODAnalyzerFlat::purities(const edm::Event& iEvent,
 	  muon_3dIPError = muon->edB(pat::Muon::PV3D);
 	}
 	
-	//      // extrapolation of muon track coordinates
-	//      TrajectoryStateOnSurface stateAtMuSt1 = muPropagator1st_.extrapolate(*reco);
-	//      if (stateAtMuSt1.isValid()) {
-	//        muon_etaAtSt1 = stateAtMuSt1.globalPosition().eta();
-	//        muon_phiAtSt1 = stateAtMuSt1.globalPosition().phi();
-	//      }
-	//      
-	//      TrajectoryStateOnSurface stateAtMuSt2 = muPropagator2nd_.extrapolate(*reco);
-	//      if (stateAtMuSt2.isValid()) {
-	//        muon_etaAtSt2 = stateAtMuSt2.globalPosition().eta();
-	//        muon_phiAtSt2 = stateAtMuSt2.globalPosition().phi();
-	//      }
-
 	// Iterate through GEN particles
 	int temp_idx = -1;
 	float temp_dr = genRecoMatchingMaxDR_;
