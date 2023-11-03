@@ -54,8 +54,8 @@ L1TMuonMiniAODAnalyzerFlat::L1TMuonMiniAODAnalyzerFlat(const edm::ParameterSet& 
     correctMuonCharge_ = iConfig.getParameter<bool>("correctMuonCharge");
   }
 
-  if ( iConfig.exists("trgMatchingMaxDR") ) {
-    trgMuonMatchingMaxDR_ = iConfig.getParameter<double>("trgMatchingMaxDR");
+  if ( iConfig.exists("trgMuonMatchingMaxDR") ) {
+    trgMuonMatchingMaxDR_ = iConfig.getParameter<double>("trgMuonMatchingMaxDR");
   }
 
   if ( iConfig.exists("correctTrgCharge") ) {
@@ -158,17 +158,19 @@ void L1TMuonMiniAODAnalyzerFlat::efficiencies(const edm::Event& iEvent,
     gen_acc = acc_gen; //@@ continue below prevents Fill
     if (!acc_gen) { continue; }
 
-    // Loop through RECO muons
+    // Record
     int temp_idx = -1;
     float temp_dr = genRecoMatchingMaxDR_;
-    //unsigned int muon_size = (unsigned int)thePatMuons->size();
-    std::vector<pat::Muon>::const_iterator muon = (*thePatMuons).begin();
-    std::vector<pat::Muon>::const_iterator begin = (*thePatMuons).begin();
-    std::vector<pat::Muon>::const_iterator end = (*thePatMuons).end();
-    for( ; muon != end; ++muon ) {
-
+    std::vector<pat::Muon>::const_iterator tmp;
+    
+    // Loop through RECO muons
+    std::vector<pat::Muon>::const_iterator muon = thePatMuons->begin();
+    std::vector<pat::Muon>::const_iterator begin = thePatMuons->begin();
+    std::vector<pat::Muon>::const_iterator end = thePatMuons->end();
+    for ( ; muon != end; ++muon ) {
+      
       // If already matched to a GEN muon, ignore
-      int imuon = std::distance(muon,begin);
+      int imuon = std::distance(begin,muon);
       if ( std::find(matched_muon.begin(), matched_muon.end(), imuon) != matched_muon.end() ) { continue; }
       
       // Only consider RECO muons in acceptance
@@ -180,42 +182,20 @@ void L1TMuonMiniAODAnalyzerFlat::efficiencies(const edm::Event& iEvent,
 	// Only consider RECO muons passing Loose ID
 	bool loose_id = muon->passed(reco::Muon::CutBasedIdLoose);
 	if (loose_id) {
-
-	  // extrapolation of muon track coordinates
-	  TrajectoryStateOnSurface stateAtSt1 = muPropagator1st_.extrapolate(*muon);
-	  if (stateAtSt1.isValid()) {
-	    float etaAtSt1 = stateAtSt1.globalPosition().eta();
-	    float phiAtSt1 = stateAtSt1.globalPosition().phi();
 	  
-	    TrajectoryStateOnSurface stateAtSt2 = muPropagator2nd_.extrapolate(*muon);
-	    if (stateAtSt2.isValid()) {
-	      float etaAtSt2 = stateAtSt2.globalPosition().eta();
-	      float phiAtSt2 = stateAtSt2.globalPosition().phi();
+	  float dr = reco::deltaR( gen->eta(), gen->phi(), muon->eta(), muon->phi() );
+	  int dq = gen->charge() * muon->charge();
 	  
-	      float dr = reco::deltaR( gen->eta(), gen->phi(), etaAtSt2, phiAtSt2 );
-	      int dq = gen->charge() * muon->charge();
-
-	      if ( dr < temp_dr && (dq==1 || !correctMuonCharge_) ) {
-		temp_dr = dr;
-		temp_idx = (int)imuon;
-		muon_etaAtSt1 = etaAtSt1;
-		muon_phiAtSt1 = phiAtSt1;
-		muon_etaAtSt2 = etaAtSt2;
-		muon_phiAtSt2 = phiAtSt2;
-	      }
-	    }
+	  if ( dr < temp_dr && (dq==1 || !correctMuonCharge_) ) {
+	    temp_dr = dr;
+	    temp_idx = (int)imuon;
+	    tmp = muon;
 	  }
 	}
       }
     }
     
-    if ( temp_idx < 0 ) {
-      // If not matched, reset
-      muon_etaAtSt1 = 0.;
-      muon_phiAtSt1 = 0.;
-      muon_etaAtSt2 = 0.;
-      muon_phiAtSt2 = 0.;
-    } else {
+    if ( temp_idx >= 0 ) {
       // If matched, continue ...
       
       // Store matched result
@@ -226,28 +206,41 @@ void L1TMuonMiniAODAnalyzerFlat::efficiencies(const edm::Event& iEvent,
       // Record matched result
       matched_muon.push_back(gen_muon_idx);
       
-      // Ptr to matched muon
-      edm::Ptr<pat::Muon> reco(thePatMuons,gen_muon_idx);
+      // Matched muon
+      std::vector<pat::Muon>::const_iterator muon = tmp;
       
       // Store muons
-      muon_pt = reco->pt();
-      muon_eta = reco->eta();
-      muon_phi = reco->phi();
-      muon_charge = reco->charge();
+      muon_pt = muon->pt();
+      muon_eta = muon->eta();
+      muon_phi = muon->phi();
+      muon_charge = muon->charge();
       
-      muon_PassLooseID = reco->passed(reco::Muon::CutBasedIdLoose);
-      muon_PassTightID = reco->passed(reco::Muon::CutBasedIdMediumPrompt);
-      muon_isSAMuon = reco->isStandAloneMuon();
+      muon_PassLooseID = muon->passed(reco::Muon::CutBasedIdLoose);
+      muon_PassTightID = muon->passed(reco::Muon::CutBasedIdMediumPrompt);
+      muon_isSAMuon = muon->isStandAloneMuon();
       
-      if ( !(reco->innerTrack()).isNull() ) {
-	muon_dz = reco->innerTrack()->dz(PV);
-	muon_dzError = reco->innerTrack()->dzError();
-	muon_dxy = reco->innerTrack()->dxy(PV);
-	muon_dxyError = reco->innerTrack()->dxyError();
-	muon_3dIP = reco->dB(pat::Muon::PV3D);
-	muon_3dIPError = reco->edB(pat::Muon::PV3D);
+      if ( !(muon->innerTrack()).isNull() ) {
+	muon_dz = muon->innerTrack()->dz(PV);
+	muon_dzError = muon->innerTrack()->dzError();
+	muon_dxy = muon->innerTrack()->dxy(PV);
+	muon_dxyError = muon->innerTrack()->dxyError();
+	muon_3dIP = muon->dB(pat::Muon::PV3D);
+	muon_3dIPError = muon->edB(pat::Muon::PV3D);
       }
-      
+
+      // extrapolation of muon track coordinates
+      TrajectoryStateOnSurface stateAtSt1 = muPropagator1st_.extrapolate(*muon);
+      if (stateAtSt1.isValid()) {
+	muon_etaAtSt1 = stateAtSt1.globalPosition().eta();
+	muon_phiAtSt1 = stateAtSt1.globalPosition().phi();
+      }
+
+      TrajectoryStateOnSurface stateAtSt2 = muPropagator2nd_.extrapolate(*muon);
+      if (stateAtSt2.isValid()) {
+	muon_etaAtSt2 = stateAtSt2.globalPosition().eta();
+	muon_phiAtSt2 = stateAtSt2.globalPosition().phi();
+      }
+
       // Iterate through trigger muons
       int tmp_idx = -1;
       float tmp_dr = trgMuonMatchingMaxDR_;
@@ -255,17 +248,23 @@ void L1TMuonMiniAODAnalyzerFlat::efficiencies(const edm::Event& iEvent,
       l1t::MuonBxCollection::const_iterator iter = l1muoncoll->begin(0);
       l1t::MuonBxCollection::const_iterator begin = l1muoncoll->begin(0);
       l1t::MuonBxCollection::const_iterator end = l1muoncoll->end(0);
-      for( ; iter != end; ++iter ) {
-	int itrg = std::distance(iter,begin);
+      for ( ; iter != end; ++iter ) {
 	
 	// If already matched to a muon, ignore
+	int itrg = std::distance(begin,iter);
 	if ( std::find(matched_trg.begin(), matched_trg.end(), itrg) != matched_trg.end() ) { continue; }
-	float dr = reco::deltaR( reco->eta(), reco->phi(), iter->etaAtVtx(), iter->phiAtVtx() );
-	int dq = iter->charge() * reco->charge();
+	
+	float dr = trgMuonMatchingMaxDR_;
+	if ( stateAtSt2.isValid() ) {
+	  dr = reco::deltaR( muon_etaAtSt2, muon_phiAtSt2, iter->eta(), iter->phi() );
+	} else if ( stateAtSt1.isValid() ) {
+	  dr = reco::deltaR( muon_etaAtSt1, muon_phiAtSt1, iter->eta(), iter->phi() );
+	}
+	int dq = iter->charge() * muon->charge();
+
 	if ( (dr<tmp_dr) && 
 	     (dq==1 || !correctTrgCharge_) && 
 	     (iter->hwQual()>=minTrgQuality_) ) {
-	  //@@ matched!
 	  tmp_dr = dr;
 	  tmp_idx = (int)itrg;
 	  tmp = iter;
@@ -341,8 +340,8 @@ void L1TMuonMiniAODAnalyzerFlat::purities(const edm::Event& iEvent,
   l1t::MuonBxCollection::const_iterator iter = l1muoncoll->begin(0);
   //l1t::MuonBxCollection::const_iterator begin = l1muoncoll->begin(0);
   l1t::MuonBxCollection::const_iterator end = l1muoncoll->end(0);
-  for( ; iter != end; ++iter ) {
-    //int itrg = std::distance(iter,begin);
+  for ( ; iter != end; ++iter ) {
+    //int itrg = std::distance(begin,iter);
 
     // Only consider TRG muons in acceptance and with HW quality
     bool acc_trg = 
@@ -366,14 +365,18 @@ void L1TMuonMiniAODAnalyzerFlat::purities(const edm::Event& iEvent,
       // Loop through RECO muons
       int tmp_idx = -1;
       float tmp_dr = trgMuonMatchingMaxDR_;
+      float tmp_etaAtSt1 = 0.;
+      float tmp_phiAtSt1 = 0.;
+      float tmp_etaAtSt2 = 0.;
+      float tmp_phiAtSt2 = 0.;
       //unsigned int muon_size = (unsigned int)thePatMuons->size();
-      std::vector<pat::Muon>::const_iterator muon = (*thePatMuons).begin();
-      std::vector<pat::Muon>::const_iterator begin = (*thePatMuons).begin();
-      std::vector<pat::Muon>::const_iterator end = (*thePatMuons).end();
-      for( ; muon != end; ++muon ) {
+      std::vector<pat::Muon>::const_iterator muon = thePatMuons->begin();
+      std::vector<pat::Muon>::const_iterator begin = thePatMuons->begin();
+      std::vector<pat::Muon>::const_iterator end = thePatMuons->end();
+      for ( ; muon != end; ++muon ) {
 	
 	// If already matched to a muon, ignore
-	int imuon = std::distance(muon,begin);
+	int imuon = std::distance(begin,muon);
 	if ( std::find(matched_trg.begin(), matched_trg.end(), imuon) != matched_trg.end() ) { continue; }
 
 	// Only consider RECO muons in acceptance
@@ -389,40 +392,39 @@ void L1TMuonMiniAODAnalyzerFlat::purities(const edm::Event& iEvent,
 	    // extrapolation of muon track coordinates
 	    TrajectoryStateOnSurface stateAtSt1 = muPropagator1st_.extrapolate(*muon);
 	    if (stateAtSt1.isValid()) {
-	      float etaAtSt1 = stateAtSt1.globalPosition().eta();
-	      float phiAtSt1 = stateAtSt1.globalPosition().phi();
+	      tmp_etaAtSt1 = stateAtSt1.globalPosition().eta();
+	      tmp_phiAtSt1 = stateAtSt1.globalPosition().phi();
+	    }
 	    
-	      TrajectoryStateOnSurface stateAtSt2 = muPropagator2nd_.extrapolate(*muon);
-	      if (stateAtSt2.isValid()) {
-		float etaAtSt2 = stateAtSt2.globalPosition().eta();
-		float phiAtSt2 = stateAtSt2.globalPosition().phi();
-	    
-		float dr = reco::deltaR( etaAtSt2, phiAtSt2, iter->eta(), iter->phi() );
-		int dq = iter->charge() * muon->charge();
+	    TrajectoryStateOnSurface stateAtSt2 = muPropagator2nd_.extrapolate(*muon);
+	    if (stateAtSt2.isValid()) {
+	      tmp_etaAtSt2 = stateAtSt2.globalPosition().eta();
+	      tmp_phiAtSt2 = stateAtSt2.globalPosition().phi();
+	    }
 
-		if ( (dr<tmp_dr) && (dq==1 || !correctTrgCharge_) ) {
-		  tmp_dr = dr;
-		  tmp_idx = (int)imuon;
-		  muon_etaAtSt1 = etaAtSt1;
-		  muon_phiAtSt1 = phiAtSt1;
-		  muon_etaAtSt2 = etaAtSt2;
-		  muon_phiAtSt2 = phiAtSt2;
-		}
-	      }
+	    float dr = trgMuonMatchingMaxDR_;
+	    if ( stateAtSt2.isValid() ) {
+	      dr = reco::deltaR( tmp_etaAtSt2, tmp_phiAtSt2, iter->eta(), iter->phi() );
+	    } else if ( stateAtSt1.isValid() ) {
+	      dr = reco::deltaR( tmp_etaAtSt1, tmp_phiAtSt1, iter->eta(), iter->phi() );
+	    }
+	    int dq = iter->charge() * muon->charge();
+	    
+	    if ( (dr<tmp_dr) && (dq==1 || !correctTrgCharge_) ) {
+	      tmp_dr = dr;
+	      tmp_idx = (int)imuon;
+	      muon_etaAtSt1 = tmp_etaAtSt1;
+	      muon_phiAtSt1 = tmp_phiAtSt1;
+	      muon_etaAtSt2 = tmp_etaAtSt2;
+	      muon_phiAtSt2 = tmp_phiAtSt2;
 	    }
 	  }
 	}
       }
 	
-      if ( tmp_idx < 0 ) {
-	// If not matched, reset
-	muon_etaAtSt1 = 0.;
-	muon_phiAtSt1 = 0.;
-	muon_etaAtSt2 = 0.;
-	muon_phiAtSt2 = 0.;
-      } else {
+      if ( tmp_idx >= 0 ) {
 	// If matched, continue ...
-	
+
 	// Store matched result
 	muon_trg_idx = tmp_idx;
 	muon_trg_match = (muon_trg_idx>=0);
