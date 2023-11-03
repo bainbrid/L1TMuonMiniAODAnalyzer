@@ -9,15 +9,23 @@ L1TMuonMiniAODAnalyzerFlat = cms.EDAnalyzer(
     L1T = cms.InputTag("gmtStage2Digis","Muon"),
 
     IsMC = cms.bool(True),
-    genMuonPtThreshold = cms.double(3.5),
+    #
+    genMuonPtThreshold = cms.double(3.),
+    recoMuonPtThreshold = cms.double(0.),
+    trgMuonPtThreshold = cms.double(0.),
+    #
     genMuonEtaThreshold = cms.double(0.8),
-    recoMuonPtThreshold = cms.double(3.0),
-    recoMuonEtaThreshold = cms.double(1.0),
-    recoMatchingMaxDR = cms.double(0.01),
+    recoMuonEtaThreshold = cms.double(0.8),
+    trgMuonEtaThreshold = cms.double(0.8),
+    #
+    genRecoMatchingMaxDR = cms.double(0.01),
+    trgMuonMatchingMaxDR = cms.double(0.4),
+    #
     correctMuonCharge = cms.bool(True),
-    trgMatchingMaxDR = cms.double(0.4),
     correctTrgCharge = cms.bool(True),
+    #
     minTrgQuality = cms.int32(12),
+    calcPurity = cms.bool(False),
     
     # muon track extrapolation to 1st station
     muProp1st = cms.PSet(

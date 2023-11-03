@@ -30,6 +30,8 @@ private:
 
   void beginJob() override;
   void analyze(const edm::Event&, const edm::EventSetup&) override;
+  void efficiencies(const edm::Event&, const edm::EventSetup&);
+  void purities(const edm::Event&, const edm::EventSetup&);
   void endJob() override;
   virtual void InitandClearStuff();
 
@@ -51,11 +53,14 @@ private:
   Float_t genMuonEtaThreshold_;
   Float_t recoMuonPtThreshold_;
   Float_t recoMuonEtaThreshold_;
-  Float_t recoMatchingMaxDR_;
+  Float_t trgMuonPtThreshold_;
+  Float_t trgMuonEtaThreshold_;
+  Float_t genRecoMatchingMaxDR_;
   Bool_t correctMuonCharge_;
-  Float_t trgMatchingMaxDR_;
+  Float_t trgMuonMatchingMaxDR_;
   Bool_t correctTrgCharge_;
   int minTrgQuality_;
+  Bool_t purities_;
 
   // Ntuple
   TTree* outputTree;
@@ -79,31 +84,31 @@ private:
   int gen_pdgid;
   int gen_mom_pdgid;
   int gen_gran_pdgid;
-  int reco_idx;
-  int reco_match;
-  Float_t reco_dr;
+  int gen_muon_idx;
+  int gen_muon_match;
+  Float_t gen_muon_dr;
   
   // Muons
-  Float_t reco_pt;
-  Float_t reco_eta;
-  Float_t reco_phi;
-  int reco_charge;
-  Float_t reco_etaAtSt1;
-  Float_t reco_etaAtSt2;
-  Float_t reco_phiAtSt1;
-  Float_t reco_phiAtSt2;
-  Float_t reco_dz;
-  Float_t reco_dzError;
-  Float_t reco_dxy;
-  Float_t reco_dxyError;
-  Float_t reco_3dIP;
-  Float_t reco_3dIPError;
-  Bool_t reco_PassTightID;
-  Bool_t reco_PassLooseID;
-  Bool_t reco_isSAMuon ;
-  int trg_idx;
-  int trg_match;
-  Float_t trg_dr;
+  Float_t muon_pt;
+  Float_t muon_eta;
+  Float_t muon_phi;
+  int muon_charge;
+  Float_t muon_etaAtSt1;
+  Float_t muon_etaAtSt2;
+  Float_t muon_phiAtSt1;
+  Float_t muon_phiAtSt2;
+  Float_t muon_dz;
+  Float_t muon_dzError;
+  Float_t muon_dxy;
+  Float_t muon_dxyError;
+  Float_t muon_3dIP;
+  Float_t muon_3dIPError;
+  Bool_t muon_PassTightID;
+  Bool_t muon_PassLooseID;
+  Bool_t muon_isSAMuon ;
+  int muon_trg_idx;
+  int muon_trg_match;
+  Float_t muon_trg_dr;
   
   // TRG
   Float_t trg_pt;

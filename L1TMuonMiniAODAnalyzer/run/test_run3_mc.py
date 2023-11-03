@@ -90,6 +90,7 @@ process.GlobalTag.globaltag="124X_dataRun3_v9"
 process.endjob_step = cms.EndPath(process.endOfProcess)
 
 process.load('L1TMuonMiniAODAnalyzer.L1TMuonMiniAODAnalyzer.L1TMuonMiniAODAnalyzerFlat_cfi')
+process.L1TMuonMiniAODAnalyzerFlat.calcPurity = True
 
 process.analysis_step = cms.Path(process.L1TMuonMiniAODAnalyzerFlat)
 
